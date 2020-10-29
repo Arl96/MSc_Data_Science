@@ -1,9 +1,15 @@
 20MAP500: Coursework I
+
 1 Overview
+
 2 Instructions
+
 3 Files to submit
+
 4 Marking scheme
+
 1 Overview
+
 In this first assessed coursework, you will analyse data about bike rides undertaken by users of Capital Bikeshare (CaBi) – a publicly-owned bicycle sharing system that serves areas in and around Washington DC in the United States.
 
 2 Instructions
