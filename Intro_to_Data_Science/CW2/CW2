@@ -1,0 +1,399 @@
+---
+title: "20MAP500 Courswork 2"
+subtitle: "English Football Premier League Season 2018-2019 Analysis"
+date: "Last updated: `r format(Sys.time(), '%B %d, %Y')`"
+output:
+  html_document:
+    toc: true
+    toc_depth: 3
+    df_print: paged
+---
+
+```{r, include = FALSE}
+library("tidyverse")
+library("here")
+library("lubridate")
+library("janitor")
+library("RColorBrewer")
+library("ggrepel")
+```
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  comment = "",
+  results = "hide",
+  echo = FALSE,
+  message = FALSE
+)
+```
+
+```{r}
+# read csv into dataframe
+football_raw <- read_csv(file = here("data", "footy.csv"))
+```
+
+```{r}
+# get rid of unused variables
+football_raw2 <- football_raw %>%
+  select(!c(birthday, league, season, rank_in_league_top_attackers, rank_in_league_top_midfielders, rank_in_league_top_defenders, rank_in_club_top_scorer))
+```
+
+```{r}
+# get rid of players who didn't play at all
+football_raw3 <- football_raw2 %>%
+  filter(minutes_played_overall > 0)
+
+# view tibble to see if columns are right data type
+glimpse(football_raw3)
+```
+
+```{r}
+# change data types to be more suitable
+football_raw4 <- football_raw3 %>%
+  mutate(
+    full_name = as.factor(full_name),
+    position = as_factor(position),
+    current_club = as_factor(`Current Club`),
+    age = as.integer(age),
+    goals_overall = as.integer(goals_overall),
+    goals_away = as.integer(goals_away),
+    goals_home = as.integer(goals_home),
+    minutes_played_overall = as.integer(minutes_played_overall),
+    assists_overall = as.integer(assists_overall),
+    yellow_cards_overall = as.integer(yellow_cards_overall)
+  ) %>% select(!`Current Club`)
+glimpse(football_raw4)
+```
+
+```{r}
+# make final tibble with only variables that were used in the analysis
+football <- football_raw4 %>%
+  select(
+    full_name,
+    age,
+    position,
+    minutes_played_overall,
+    goals_overall,
+    goals_home,
+    goals_away,
+    assists_overall,
+    yellow_cards_overall,
+    assists_per_90_overall,
+    goals_per_90_overall,
+    current_club
+  )
+
+football 
+glimpse(football)
+```
+
+# Introduction
+  
+  This report details an analysis of data from the 2018-2019 English Premier League (EPL) football season. Football is the most popular sport in England, and many people enjoy learning obscure and surprising statistics about the beautiful game. Football is also a multi-billion pound industry, and huge amounts of money are exchanged in bets related to the EPL every year. The intention of this analysis was to find some interesting facts about EPL teams and players from the 2018-2019 season.
+
+# Data
+
+  The data analysed in this report can be found at [this website](https://footystats.org/download-stats-csv), under "Free CSV Downloads (Samples)", and is titled "Players CSV". This dataset was chosen as it was the most comprehensive set of recent EPL data that could be found on the internet and downloaded for free. See the image below for an image of the website where this dataset can be found.        
+  
+  ![Image of the website where the dataset used in this report can be found](../figures/website.png)
+  
+  Fortunately, the dataset was also in an almost perfectly tidy format, and so little tidying was required. Only one variable, "Current club", was not in tidy snake_case format, and so this was corrected. The new "current_club" variable, as well as a few others, were coerced into factor data type, which was deemed to be more suitable analysis. Similarly, several other variables - such as goals_overall - were coerced to be integers; it's impossible to score a non-integer amount of goals.  
+  
+   Many variables were removed from the final dataframe, due to them being unneeded for analysis or simply being redundant due to another variable showing the same information. The final dataframe was a tibble containing 498 observations of 12 variables. The final dataframe variables were:    
+   
+  * `full_name`(factor): Each EPL player who played this season's full name  
+  * `age` (integer): Each EPL player who played this season's age   
+  * `position` (factor): Each EPL player who played this season's position   
+  * `minutes_played_overall` (integer): How many minutes of football each EPL player played this season   
+  * `goals_overall` (integer): How many goals each EPL player scored in total this season   
+  * `goals_home` (integer): How many home goals each EPL player scored this season    
+  * `goals_away` (integer): How many away goals each EPL player scored this season    
+  * `assists_overall` (integer): How many assists each EPL player provided this season    
+  * `yellow_cards_overall` (integer): How many yellow cards each EPL player was shown this season    
+  * `assists_per_90_overall` (double): Per 90 minutes played, how many assists each EPL player provided this season    
+  * `goals_per_90_overall` (double): Per 90 minutes played, how many goals each EPL player scored this season    
+  * `current_club` (factor): Each EPL player who played this season's current team   
+
+# Questions
+
+### **Getting on a bit:** Which teams had the oldest average team on the pitch?
+  Operationalisation:    
+     Find the weighted mean of the ages of players in each team, with `minutes_played_overall` as the weighting variable. Visualise this in a bar chart, sorted with oldest team on the left and youngest team on the right.
+    
+### **No place like home:** Which top goalscorers had the highest home:away goalscoring ratios
+   Operationalisation:    
+     Find ratio of home:away goals. Plot a scatter plot, with home goals on x axis and away goals on y axis. Use size to represent total goals scored and colour to represent home:away goal ratio.
+
+    
+### **Naughty:** How were yellow cards distributed between different positions?
+  Operationalisation:    
+    Plot a scatter plot with yellow cards on y axis. Facet wrap, with each position given a different color. Is there any pattern?
+    
+### **Attacking output:** Is there any relationship between goals scored by a player and goals assisted by a player?
+  Operationalisation:    
+    Produce a tile plot with goals on one axis and assists on the other. Does there appear to be any pattern?
+
+### **Talisman:** Which teams were most reliant on one player for attacking output?
+  Operationalisation:
+    Find total goals scored by each team and find how many goal contributions (goals and assists) each player registered. Visualise this on a bar chart, with total goals scored by each team in the background and goals contributed by top contributor in foreground. Sort by goals contributed by top contributor.
+
+# Analysis 
+
+```{r}
+# set global plot theme
+old <- theme_set(theme_classic())
+theme_set(old)
+theme_update(
+  panel.grid.major.x = element_blank(), 
+  panel.grid.minor.x = element_blank(),
+  panel.grid.major.y = element_line(colour = "grey80"), 
+  panel.grid.minor.y = element_blank(),
+  panel.background   = element_blank(), 
+  axis.line.y  = element_blank(),
+  axis.line.x  = element_line(colour = "black"),
+  axis.ticks.y = element_blank(),
+  axis.text.x  = element_text(
+                     angle = 90,
+                     hjust = 1, 
+                     vjust = 0.5)
+)
+```
+
+### **Getting on a bit:** Which teams had the oldest average team on the pitch?
+
+  Watford were the only team whose average team had an average age over 30, and so were the oldest average team by a decent margin. With their history of youth development, it was little surprise to see Southampton having the youngest average age on the pitch. Without data on league positions it isn't possible to see from this visualization if there was any relationship between league position and average team age. However, it can be noted that more established EPL teams, such as Manchester City, Arsenal, and Tottenham, generally appear to occupy the middle positions in the visualization, suggesting that a blend of experience and youth was favoured by such teams this year.
+
+```{r}
+p1 <- football %>%
+  group_by(current_club) %>%
+  # calculate mean age of players on pitch throughout season
+  summarise(mean_age = weighted.mean(x = age, w = minutes_played_overall)) %>%
+  # reorder
+  mutate(current_club = fct_reorder(current_club, desc(mean_age))) %>%
+  ggplot(
+    mapping = aes(
+      x = current_club,
+      y = mean_age,
+      fill = mean_age
+    )
+  )
+
+p1 + geom_col(show.legend = FALSE) +
+  # zoom in on relevant y axis points
+  coord_cartesian(ylim = c(25, 31)) +
+  # add title and labels
+  labs(
+    title = "Getting on a bit",
+    subtitle = "Which teams had the oldest average team on the pitch?",
+    x = "Team",
+    y = "Age"
+  )
+```
+    
+### **No place like home:** Which top goalscorers had the highest home:away goalscoring ratios?
+
+  It is generally thought that football teams are more likely to get a positive result when they play at home compared to when they play away from home. By extension, this should mean that the best attacking players are likely to score at home than away from home. Sadio Mane, the joint top scorer in the 2018-2019 season, was the most extreme example of this. 18 of his 22 goals this year came at Anfield, compared to just 4 away from home, giving him a ratio of 4.5 home goals for every away goal he scored.
+
+```{r}
+p2 <- football %>% 
+  # filter for only top goalscorers 
+  filter (goals_overall > 10)%>%
+  # find home/away ratio
+  mutate(goal_ratio = goals_home/goals_away) %>%
+  ggplot(
+    mapping = (aes(
+      x = goals_home,
+      y = goals_away ,
+      colour = goal_ratio,
+      size = goals_overall
+    )))
+
+# arrow to highlight highest ratio player
+p2_curve <- 
+annotate(
+  geom = "curve", 
+  x =  16,
+  y =  8,
+  xend =  17.8,
+  yend = 4.2,
+  curvature = 0.4, 
+  arrow = arrow(length = unit(2.5, "mm")),
+  colour  = "red")
+
+p2 + geom_point() +
+  # make graph look cleaner
+  theme(
+    panel.grid.major.y = element_blank(), 
+    axis.text.x  = element_text(
+                     angle = 0,
+                     hjust = 0, 
+                     vjust = 0),
+    axis.line.y  = element_line(colour = "black"),
+    axis.ticks.x = element_blank()
+  ) +
+  # add arrow highlighting highest ratio player
+  p2_curve +
+  annotate(
+    geom = "text",
+    x = 16,
+    y = 8.3,
+    label = "Sadio Mane"
+  ) +
+  # improve scales
+  scale_x_continuous(breaks = seq(0, 20, by = 1)) +
+  scale_y_continuous(breaks = seq(0, 12, by = 1)) +
+  # add title and labels
+  labs(
+    title = "No place like home",
+    subtitle = "Which top goalscorers had the highest home:away goalscoring ratios?",
+    x = "Home goals",
+    y = "Away goals",
+    colour = "Home:away goal ratio",
+    size = "Total goals scored"
+  ) 
+  
+```
+    
+### **Naughty:** How were yellow cards distributed between different positions?
+
+  As would probably be expected, defenders and midfielders were much more likely to receive yellow cards than attackers or goalkeepers. Players in these positions are much more likely to be found in a defensive position making tackles, and so are more likely to engage in fouls worthy of yellow cards.
+
+```{r}
+p3 <- football %>%
+  ggplot(mapping =aes(
+      x = minutes_played_overall,
+      y = yellow_cards_overall,
+      colour = position,
+    )
+  )
+
+p3 +
+  # grey scatter plot with all data points
+  geom_point(data = transform(football, position = NULL), colour = "grey85", size = 2, alpha = 0.4) +
+  # coloured scatter plot for each position
+  geom_point(alpha = 0.4, size = 3) +
+  # make graph look cleaner
+  theme(
+    panel.grid.major.y = element_blank(), 
+    axis.text.x  = element_text(
+                     angle = 0,
+                     hjust = 0, 
+                     vjust = 0),
+    axis.line.y  = element_line(colour = "black"),
+    axis.ticks.x = element_blank()
+  ) +
+  # improve scales
+  scale_y_continuous(breaks = seq(0, 18, by = 2)) +
+  # add title and labels
+  labs(
+    title = "Naughty",
+    subtitle = "How were yellow cards distributed between different positions?",
+    x = "Minutes played",
+    y = "Yellow cards",
+    colour = "Position"
+  ) +
+  # make separate visualisations for each position
+  facet_wrap(facets = vars(position))
+  
+```
+
+### **Attacking output:** Is there any relationship between goals scored by a player and goals assisted by a player?
+
+  It's pretty difficult to see anything from the first visualization, below. I wanted to use a tile plot at some point in the analysis, and I hoped that by using goals and assists per 90 I would have enough variation to be able to make a nice visualization. Unfortunately this was not the case. More observations would clearly be required to be able to do this.
+
+```{r}
+p5 <- football %>%
+  # filter out observations which would skew plot
+  filter(goals_overall > 1 | assists_overall > 1) %>%
+  ggplot(
+  mapping = aes(
+    x =  goals_per_90_overall, y = assists_per_90_overall)
+) + 
+  # make graph cleaner
+  theme(
+    panel.grid.major.y = element_blank(), 
+    axis.text.x  = element_text(
+                     angle = 0,
+                     hjust = 0, 
+                     vjust = 0),
+    axis.line.y  = element_line(colour = "black"),
+    axis.ticks.x = element_blank()
+  ) +
+  # improve scales
+  scale_y_continuous(breaks = seq(0, 1, by = 0.1)) +
+  scale_x_continuous(breaks = seq(0, 1, by = 0.1)) +
+  # add title and labels
+  labs(
+    title = "Attacking output",
+    subtitle = "Is there any relationship between goals scored by a player and goals assisted by a player?",
+    x = "Goals per 90 minutes",
+    y = "Assists per 90 minutes"
+  )
+  
+
+p5 + geom_bin2d()
+```  
+
+The second visualization, below, shows more clearly that there appears to be little relationship between goals scored by a player and goals assisted by a player. This is especially true at the higher ends of both scales, though at the lower end there does appear to be quite a few "jack-of-all-trades" who score at a similar rate to which they provide to their teammates.
+
+```{r}
+# do scatter plot to see more accurately if there is any relationship
+p5 + geom_point(alpha = 0.3, size = 5, colour = "#15317E")
+
+  
+```
+
+
+
+### **Talisman:** Which teams were most reliant on one player for attacking output?
+
+  The figure below shows that Chelsea were the team most reliant on a single player in the 2018-2019 EPL season. Chelsea relied on one player to contribute over half of his teams goals and assists. Chelsea's talisman also contributed more goals and assists than any other player in the league. Liverpool's talisman registered the second most goal contributions in the league, but Liverpool were much less reliant on their talisman, who scored or assisted only 35% of his team's goals.
+
+```{r}
+p4 <- football %>%
+  # find how many goal contributions each player made
+  mutate(goal_contributions = goals_overall + assists_overall) %>%
+  group_by(current_club) %>%
+  summarise(
+    # find total goals scored by each club
+    club_goals = sum(goals_overall),
+            # how many goals was each team's talisman responsible for
+            talisman_contribution = max(goal_contributions)) %>%
+  # Sort by talisman contribution
+  arrange(desc(talisman_contribution)) %>%
+  mutate(current_club=factor(current_club, levels=current_club)) %>% 
+  # plot variables
+  ggplot(mapping = aes(
+    x = current_club, 
+    y = club_goals))
+
+#plot grey columns showing teams' total goals
+p4 + geom_col(colour = "grey85", alpha = 0.4) +
+  # remove padding
+  scale_y_continuous(expand = expansion(mult = c(0, 0))) +
+  # plot talismans' contributions
+  geom_col(mapping = aes(
+    y = talisman_contribution,
+    fill = 100 *round(talisman_contribution/club_goals, digits = 2))) +
+  # add label for percentage contribution of each talisman
+  geom_text(size = rel(2.5), 
+            aes(
+              angle = 90,
+              x = current_club,
+              y = talisman_contribution + 6,
+              label = scales::percent(round(talisman_contribution/club_goals, digits = 2),  accuracy = 1L))) +
+  # add titles etc
+  labs(
+    title = "Talisman",
+    subtitle = "Which teams were most reliant on one player for attacking output?",
+    x = "Team",
+    y = "Talisman goal contributions",
+    fill = "Percentage of goals \n from talisman"
+  )
+```
+
+# Conclusion
+
+  Five questions were asked and answered using the EPL 2018-2019 season data. Watford were found to have fielded the oldest average team throughout the season, while other teams such as Southampton preferred to take their chances with younger players. We learned that Sadio Mane doesn't like traveling very much, but loves delighting his home fans with goals. We confirmed that defenders and midfielders are more likely to get into trouble with the referee, and that attackers who were good at scoring goals were generally not very interested in helping their teammates to score them. Finally, we discovered that Chelsea were a one-man team this season, with Eden Hazard scoring or assisting the majority of his team's goals.
+  
+  It would be interesting to see how some of these findings impacted each team's league position. This could be explored in a future analysis, with data that included each team's final league position. For example, we could see whether the average age of a team impacted final league position.
