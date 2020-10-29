@@ -12,7 +12,9 @@
 
 In this first assessed coursework, you will analyse data about bike rides undertaken by users of Capital Bikeshare (CaBi) – a publicly-owned bicycle sharing system that serves areas in and around Washington DC in the United States.
 
+
 2 Instructions
+
 Start a new RStudio project. Create a folder data within your project folder; within the data folder, create an empty folder named data_rides.
 
 Go to https://www.capitalbikeshare.com/system-data and download the trip-history data for all rides started between the beginning of January 2019 and the end of July 2020. That is, the files you need to download are .zip files containing trip-history data stored in .csv files. Save these .zip files to /data/data_rides within your project folder. Do not extract the .zip files.
@@ -35,7 +37,9 @@ Find five interesting questions raised by the data in rides. For instance, you c
 
 Provide answers to your five operationalised questions based on the data supported by meaningful visualisations.
 
+
 3 Files to submit
+
 You will submit your report in the form of a single R notebook (i.e..Rmd file) which contains your analysis and which can be rendered (“knitted”) to an .html document. Specifically, submit
 
 your R notebook (i.e. the .Rmd file),
@@ -44,22 +48,28 @@ Note: the total submission size must be less than 800 megabytes.
 
 Edit (15 October 2020): do not include any identifying information such as your name anywhere in the submitted documents.
 
+
 4 Marking scheme
+
 The rendered report should be structured into the following sections.
 
 Introduction [3 points]
+
 Motivate your work, i.e.
 briefly describe the topic,
 briefly explain why it is worth studying.
 Data [10 points]
+
 Describe the data set, i.e.
 briefly explain the source of the raw data,
 summarise the variables contained in the data set after any steps needed for cleaning and tidying the data,
 if you need to exclude any observations from your analysis, justify this here.
 Questions [20 points]
+
 State five interesting research questions raised by the data,
 For each question, explain how you operationalise it.
 Analysis [35 points]
+
 Answer the five operationalised research questions.
 Each answer should be supported by one or more meaningful visualisations.
 Over the course of answering your five questions, you should
@@ -71,19 +81,23 @@ meaningful annotation;
 discrete colour or fill scales (i.e. discrete variable mapped to the colour or fill aesthetic);
 continuous colour or fill scales (i.e. a continuous variable mapped to the colour or fill aesthetic).
 Conclusion [2 points]
+
 Summarise your results.
 Mention at least one further question raised by the results of your analysis.
 In addition, your project should satisfy the following conditions.
 
 Reproducibility [10 points]
+
 Ensure that your entire analysis is reproducible on another computer which has access to the raw data by knitting your R notebook. In particular, this means that
 your project folder contains a folder data which holds all your data files organised into further subfolders as specified in the instructions above,
 your notebook specifies the paths to the data using relative – not absolute – paths,
 any data wrangling/data cleaning is done via the R code inside your notebook,
 use of additional R packages is allowed.
 Figure formatting [10 points]
+
 Ensure that each of your graphs has suitably labeled and formatted axes and a suitable colour scheme, title and legend if appropriate.
 Style [10 points]
+
 Your knitted report should only show suitably formatted text and figures (and potentially tables). No code should be visible in the rendered document. It should be written in full text (i.e. not just bullet points) and in such a way that it can be read and understood by someone who has not seen the data, does not have access to the data, and has only general knowledge about the field of study.
 Ensure that
 you have checked your spelling and grammar, and you have ensured that all abbreviations are defined in the text,
