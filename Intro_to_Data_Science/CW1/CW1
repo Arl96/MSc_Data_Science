@@ -1,1 +1,548 @@
+---
+title: "20MAP500 Courswork 1"
+subtitle: "Capital Bikeshare Rides Analysis: January 2019 - July 2020"
+date: "Last updated: `r format(Sys.time(), '%B %d, %Y')`"
+output:
+  html_document:
+    toc: true
+    toc_depth: 3
+    df_print: paged
+---
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  comment = "",
+  results = "hide",
+  echo = FALSE,
+  message = FALSE,
+  warning = FALSE
+)
+```
 
+
+```{r}
+library("tidyverse")
+library("here")
+library("lubridate")
+library("janitor")
+library("leaflet")
+```
+
+```{r}
+# get file paths for each month of data
+file_paths <- list.files(path = here("data", "data_rides"), full.names = TRUE) 
+
+# empty tibble
+rides_raw <- tibble()
+
+for (path in file_paths) {
+
+  rides_new <- read_csv(path)
+
+  # Binding the rows together will throw an error because the column "Start station number"
+  # (which exists in some of the files) is sometimes parsed as <double> and sometimes parsed
+  # as character. To make sure that the rows can be glued together, we must ensure that it is
+  # always coerced to <double> which is what the following code if-statement does.
+  if ("Start station number" %in% colnames(rides_new)) { # if the column "Start station number" exists
+
+    # Ensures that the column "Start station number" is <double> and not <character>.
+    rides_new <- rides_new %>%
+      mutate(`Start station number` = as.double(`Start station number`))
+  }
+
+  # Now we can bind the tables together by row.
+  rides_raw <- bind_rows(rides_raw, rides_new)
+}
+```
+
+```{r}
+# due to variable names changing in April 2020, data from the old and new variable names need to be combined into a variables
+rides_raw <- rides_raw %>%
+  mutate(
+    started_at = coalesce(`Start date`, started_at),
+    ended_at = coalesce(`End date`, ended_at),
+    start_station_name = coalesce(`Start station`, start_station_name),
+    end_station_name = coalesce(`End station`, end_station_name),
+    member_casual = coalesce(`Member type`, member_casual),
+  )
+```
+
+```{r}
+# get rid of unused variables
+rides_raw <- rides_raw %>%
+  select(c(started_at, ended_at, start_station_name, end_station_name, member_casual, start_lat, start_lng, end_lat, end_lng))
+```
+
+```{r}
+# check that no NA values are still in tibble
+rides_raw %>%
+  filter(is.na(started_at)) # no NA values found
+
+rides_raw %>%
+  filter(is.na(ended_at)) # no NA values found
+
+rides_raw %>%
+  filter(is.na(start_station_name)) # this produces a tibble of 3972 rides with no start station name
+
+rides_raw %>%
+  filter(is.na(end_station_name)) # this produces a tibble of 7491 rides with no end station name
+
+rides_raw %>%
+  filter(is.na(member_casual)) # no NA values found
+```
+
+```{r}
+# check columns are right variable type
+glimpse(rides_raw)
+
+# change member_casual variable to factor and change station names to factor
+rides_raw <- rides_raw %>%
+  mutate(member_casual = as_factor(member_casual),
+         start_station_name = as_factor(start_station_name),
+         end_station_name = as_factor(end_station_name))
+glimpse(rides_raw)
+
+# check that only 2 types of member exist
+test6 <- rides_raw %>%
+  filter(!member_casual == "member" & !member_casual == "casual")
+test6 # found that member and casual are sometimes written with capital letter, and others lowercase
+
+# check that no other types of member exist
+test7 <- rides_raw %>%
+  filter(!member_casual == "member" & !member_casual == "casual" & !member_casual == "Member" & !member_casual == "Casual")
+test7 # no other member types exist
+```
+
+```{r}
+# recode member_casual so that same factors are merged
+rides_raw <- rides_raw %>%
+  mutate(member_casual = fct_recode(member_casual, member = "Member", casual = "Casual"))
+rides_raw
+
+# test that factors have been merged
+rides_raw %>%
+  filter(!member_casual == "member" & !member_casual == "casual") # all rides were found to be either member or casual. therefore we can proceed
+```
+
+```{r}
+# create duration column
+rides_raw <- rides_raw %>%
+  mutate(duration = as.duration(ended_at - started_at))
+
+# check all durations are positive and non-zero
+rides_raw %>%
+  filter(!duration > 0) # found 2410 rows with negative/zero durations
+
+# filter out these impossible rides
+rides_final <- rides_raw %>%
+  filter(duration > 0) %>%
+  # also get rid of rides without start/finish station
+  filter(!is.na(started_at) & !is.na(ended_at))
+rides_final
+glimpse(rides_final)
+```
+
+# Introduction
+
+This report details an analysis of data obtained from Capital Bikeshare (CaBi), a bicycle sharing system used by people in the Washington DC area. Specifically, the data analysed here describes individual rides undertaken by users of the Capital Bikeshare service from January 2019 to July 2020.
+
+# Data
+
+  All data used in this report can can be found on the  Capital Bikeshare website, [here](https://www.capitalbikeshare.com/system-data). The data is available for anybody to download for free.  
+  
+  The data was provided in a set of comma-separated values (CSV) files, where each row of data corresponded to an individual journey undertaken on one of the Capital Bikeshare bicycles. Each column represented a different variable, such as the station that a journey started at or the duration of the journey undertaken. Each month's data was provided in a separate CSV file, and therefore the data from each month needed to be combined into a single dataframe for analysis.  
+  
+  Due to the column `Start station number` not being a consistent data type across the different months' CSV files, it was not initially possible to bind all of the CSV files into a single tibble. Therefore, the `Start station number` column was coerced to always be of the double data type, making it possible to bind all CSV files for the different months into a single tibble.    
+  
+  The column names for each variable also changed from April 2020, and so when the original tibble was created it needed to be tidied so that all variables in the tibble corresponded to single, unique columns. Therefore, several columns such as `Start date` and `started_at` were coalesced into a single column `started_at`, tidying all of the data from one variable into a single column, and removing the redundant second column for each variable. Some variables, such as `start_station_id`, were removed because the information they contained was not useful for analysis.  
+  
+  The `is_member` column was coerced to a more suitable data type - a factor - for analysis. It was discovered that the number of factors in this column was double the number that was expected, due to the data for this column sometimes being entered with a capital letter and sometimes in lowercase. Thus, it was essential to recode the factors in this column so that they were unified into unique and consistent factors.   
+  
+  The `start_station_name` and `end_station_name` columns were also coerced to factor data type, so that they could be used more accurately in this analysis.
+  
+  A new column was also created to display a new variable, `duration`, which stored how long each Capital Bikeshare journey lasted for.   
+  
+  Finally, rows were removed which had NA values or impossible journey times, such as journey times that were non-positive values. This step was taken to ensure that any analysis was as accurate as possible and did not result in any avoidable errors.   
+  
+  The final dataframe was a tibble containing 4.6 million observations of 10 variables. The final variables were:
+  
+  * `started_at`(datetime): What time and date did the journey start?
+  * `ended_at` (datetime): What time and date did the journey end?
+  * `start_station_name` (factor): Where did the journey start?
+  * `end_station_name` (factor): Where did the journey end?
+  * `member_casual` (factor): Was the rider a member or a casual user?
+  * `duration` (duration): How long was the journey (in seconds)?
+  * `start_lat` (double): The start station's latitude
+  * `start_lng` (double): The start station's longitude
+  * `end_lat` (double): The end station's latitude
+  * `end_lng` (double): The end station's longitude
+  
+# Questions
+
+### **Changing tides:** How has member and non-member usage of of Capital Bikeshare developed since January 2020?
+  Operationalisation: Display bar graph showing how overall usage has developed over time for each membership category. Display normalised bar graph to show what share of usage was undertaken for members vs non-members
+
+### **Rush hour:** What are the busiest times of day on weekdays vs weekends?
+  Operationalisation: Divide journeys into weekday journeys and weekend journeys. Divide day into 24 chunks of 1 hour. Facet wrap, and see which hours are busiest on weekdays and weekends
+
+### **Members' club:** Do commuters tend to be casual or member users?
+  Operationalisation: Focus on journeys between 6am to 9:30am, and between 3:30pm and 6:30pm - the Washington DC rush hours. Assume that people using CaBi bicycles at these times are commuting. Plot a bar chart visualizing the number of journeys undertaken at rush hour times for this time period.   
+
+### **Going to work:** What are the most popular morning rush hour destinations?
+  Operationalisation: Filter to view only journeys that started between 6:00am and 9:30am, when the morning rush hour is.  Use a histogram to visualise the most popular travel destinations at this time. 
+
+### **Nightriders:** where are people travelling at night-time?
+  Operationalisation: Filter to view only journeys that started between 12:00am and 5:00am. Use leaflet interactive maps to view the most popular start and finish stations at night time.
+
+
+
+# Analysis 
+
+```{r}
+# set global theme
+old <- theme_set(theme_classic())
+theme_set(old)
+theme_update(
+  panel.grid.major.x = element_blank(), 
+  panel.grid.minor.x = element_blank(),
+  panel.grid.major.y = element_line(colour = "grey"), 
+  panel.grid.minor.y = element_blank(),
+  panel.background   = element_blank(), 
+  axis.line.y  = element_blank(),
+  axis.line.x  = element_line(colour = "black"),
+  axis.ticks.y = element_blank(),
+  axis.text.x  = element_text(
+                     angle = 90,
+                     hjust = 1, 
+                     vjust = 0.5), 
+  legend.position = "none"
+)
+```
+
+### **Changing tides:** How has member and non-member usage of of Capital Bikeshare developed since January 2020?
+
+```{r}
+# make new variable to only look at month of journey
+df1 <- rides_final %>%
+  mutate(month_started_at = floor_date(started_at, unit = "month")) %>%
+  group_by(month_started_at, member_casual) %>%
+  count %>%
+  mutate(count_rides = n)
+
+# tell ggplot what to plot globally
+p1 <- ggplot(data = df1, mapping = aes(x = month_started_at, y = count_rides/1000))
+
+p1 +
+  # remove padding
+  scale_y_continuous(expand = expansion(mult = c(0, 0))) +
+  #add title
+  labs(
+    title = "Figure 1a: Changing tides a",
+    subtitle = "How has member and non-member usage of \n Capital Bikeshare developed since January 2020?",
+    x = "Month",
+    y = "Thousands of journeys",
+    colour = "Membership Type"
+  ) +
+  # show every 3rd month on axis label
+  scale_x_datetime(date_breaks = "1 month", date_labels = "%b-%y") +
+  # make a bar chart showing how rides have changed over time for each membership type
+  geom_col(aes(fill = member_casual)) + 
+  theme(legend.position = "top")
+```
+  
+  Figure 1a, above, displays how usage of Capital Bikeshare bicycles has changed over time. From this bar graph, it is difficult to see clearly whether the proportion of rides undertaken by members vs casuals has changed over time.   
+  
+
+```{r}
+# normalised bar chart to see more clearly whether proportional rides undertaken for members vs casuals has changed over time
+p1 +
+  # remove padding
+  scale_y_continuous(expand = expansion(mult = c(0, 0))) +
+  #add title
+  labs(
+    title = "Figure 1b: Changing tides b",
+    subtitle = "Proportionally, how has member and non-member \n usage of Capital Bikeshare developed since January 2020?",
+    x = "Month",
+    y = "Proportion of Journeys",
+    colour = "Membership Type"
+  ) +
+  # show every 3rd month on axis label
+  scale_x_datetime(date_breaks = "1 month", date_labels = "%b-%y") +
+  # make a bar chart showing proportionally how rides have changed over time for each membership type
+  geom_col(aes(fill = member_casual), position = position_fill()) + 
+  theme(legend.position = "top")
+```
+  
+  Figure 1b shows that, while the proportion of rides being from members vs casuals remained somewhat steady up until March 2020, this suddenly changed and in April just over half of journeys were undertaken by casuals. This trend has continued for the following months. Looking back at figure 1a, it can be seen that this is not just a relative increase in casual users, but a real increase in the number of casual users. A possible explanation for this is that when COVID-19 caused many people to reduce commuting to work around March 2020, many Capital Bikeshare users froze their membership to become casual users, as they were using the service more infrequently.
+
+### **Rush hour:** What are the busiest times of day on weekdays vs weekends?
+
+```{r}
+# make new variable to only look at hour of journey
+df2 <- rides_final %>%
+  mutate(floor_hour = floor_date(started_at, unit = "hour")) %>%
+  # manipulating hour variable to get just the hour
+  mutate(hour = as_factor(hour(floor_hour))) %>%
+  # make new variable to see if day is a weekday
+  mutate(week_days = wday(started_at, label = TRUE)) %>%
+  mutate(week_days = fct_recode(week_days,
+  weekday = "Mon",
+  weekday = "Tue",
+  weekday = "Wed",
+  weekday = "Thu",
+  weekday = "Fri",
+  weekend = "Sat",
+  weekday = "Sun")) %>%
+  group_by(hour, week_days) %>%
+  count %>%
+  mutate(count_rides2 = n)
+
+p2 <- ggplot(data = df2, mapping = aes(x = hour, y = count_rides2/1000))
+
+# make a rectangle to highlight rush hour times
+p_rect1 <- 
+annotate(
+  geom  = "rect", 
+  xmin  = 6, 
+  xmax  = 9.5, 
+  ymin  = 0, 
+  ymax  = 500,
+  alpha = 0.2, 
+  fill  = "red"
+)
+
+p_rect2 <- 
+annotate(
+  geom  = "rect", 
+  xmin  = 15.5, 
+  xmax  = 18.5, 
+  ymin  = 0, 
+  ymax  = 500,
+  alpha = 0.2, 
+  fill  = "red"
+)
+
+p2 +  
+  # remove padding
+  scale_y_continuous(limits = c(0, 599), expand = expansion(mult = c(0, 0))) +
+  # make a grey bar graph in background to show most popular times across all days
+  geom_col(data = transform(df2, week_days = NULL), fill = "grey85") +
+  # make a separate graph for weekends and weekdays
+  geom_col(aes(fill = week_days)) +
+  facet_wrap(facets = vars(week_days)) +
+  
+  # make rectangles to highlight rush hour times
+  p_rect1 + 
+  annotate(
+    geom       = "text", 
+    x          = 6,
+    y          = 520, 
+    label      = "rush hour",
+    hjust      = 0.3, vjust = 0,
+    lineheight = 0.8,
+    colour     = "red") +
+  
+  p_rect2 + 
+  annotate(
+    geom       = "text", 
+    x          = 15.5,
+    y          = 520, 
+    label      = "rush hour",
+    hjust      = 0.3, vjust = 0,
+    lineheight = 0.8,
+    colour     = "red") +
+  labs(
+    title = "Figure 2: Rush hour",
+    subtitle = "What are the busiest times of day on weekdays vs weekends?",
+    x = "Hour of the day",
+    y = "Thousands of journeys"
+  )
+```
+
+  Figure 2, above, shows that usage of CaBi bicycles on weekdays peaks around the end of rush hour. At weekends, usage is generally much lower, and is more evenly spread out, peaking in the early afternoon. It appears that a great number of people who use the CaBi bikes are commuters.
+
+### **Members' club:** Do commuters tend to be casual or member users?
+
+```{r}
+# I will use the number of minutes that have passed since midnight at each rush hour limit to filter for rush hour times
+# how many mins since midnight at 6:00am
+60 * 6
+# how many mins since midnight at 9:30am
+60 * 9.5
+# how many mins since midnight at 3:30pm
+60 * 15.5
+# how many mins since midnight at 6:30pm
+60 * 18.5
+
+df3 <- rides_final %>%
+  # get variable for # minutes of the day that have passed since  midnight
+  mutate(mins_start = 60 * hour(started_at) + minute(started_at)) %>%
+  # select rush hour times as calculated above
+  filter((mins_start > 360 & mins_start < 570) | (mins_start > 930 & mins_start < 1110)) %>%
+  group_by(hour(started_at), member_casual) %>%
+  count()
+
+p3 <- ggplot(data = df3, mapping = aes(x = member_casual, y = n / 1000000))
+
+p3 + geom_col(aes(fill = member_casual)) +
+  # remove padding
+  scale_y_continuous(expand = expansion(mult = c(0, 0))) +
+  labs(
+    title = "Figure 3: Members' club",
+    subtitle = "Do commuters tend to be casual or member users?",
+    x = "Membership type",
+    y = "Millions of journeys since January 2019") +
+  theme(
+    axis.ticks.x = element_blank(),
+  axis.text.x  = element_text(angle = 0))
+    
+```
+
+  Figure 3, above, shows that the vast majority of commuter journeys since January 2019 were completed by CaBi members. If a person was using the bikes regularly to commute to and from work, it would make financial sense to make the investment and become a full CaBi member. 
+
+### **Going to work:** What are the most popular morning rush hour destinations?
+
+```{r}
+df4 <- rides_final %>%
+  # get variable for # minutes of the day that have passed since  midnight
+  mutate(mins_start = 60 * hour(started_at) + minute(started_at)) %>%
+  # select rush hour times as calculated above
+  filter((mins_start > 360 & mins_start < 570)) %>%
+  # filter rides longer than one day
+  filter(duration < 24 * 60 * 60) %>%
+  group_by(end_station_name) %>%
+  count(sort = TRUE) %>%
+  ungroup() %>%
+  slice_head(n = 10) 
+
+p4 <- ggplot(data = df4, mapping = aes(y = reorder(end_station_name, n), x = n / 1000, fill = n))
+
+p4 + geom_col() +
+  labs(
+    title = "Figure 4: Going to work",
+    subtitle = "What are the most popular morning rush hour destinations?",
+    y = "Destination station",
+    x = "Thousands of journeys since January 2019") +
+  theme(
+    axis.ticks.x = element_blank(),
+    axis.text.x  = element_text(angle = 0),
+    panel.grid.major.y = element_blank()
+    )
+```
+
+  Figure 4, above, shows that Columbus Circle/Union Station is the most popular morning rush hour destination - by some distance. It would seem that many people who use CaBi bicycles work somewhere close to this station.
+
+### **Nightriders:** where are people travelling at night-time?
+
+```{r, results = "default"}
+df5 <- rides_final %>%
+  # get variable for # minutes of the day that have passed since  midnight
+  mutate(mins_start = 60 * hour(started_at) + minute(started_at)) %>%
+  mutate(mins_end = 60 * hour(ended_at) + minute(ended_at)) %>%
+  # select rush times between 12am and 5 am
+  filter(mins_start < 300 & mins_end < 300) %>%
+  # filter out rides longer than one day
+  filter(duration < 24 * 60 * 60) %>%
+  group_by(start_lat, end_lat, start_lng, end_lng) %>%
+  count(sort = TRUE) %>%
+  ungroup() %>%
+  slice_head(n = 10)
+
+# custom icon for start stations
+start_icon <- makeIcon(
+    here("figures", "start.png"),  
+    iconWidth = 33, 
+    iconHeight = 33
+  )
+
+# custom icon for end stations
+end_icon <- makeIcon(
+    here("figures", "end.png"),  
+    iconWidth = 25, 
+    iconHeight = 25
+  )
+
+# load map of Washington DC
+map <- df5 %>%
+  leaflet() %>%
+  addTiles() %>%
+  setView(
+    lat  = 38.9072,
+    lng  = -77.0369,
+    zoom = 11
+  )
+
+# add markers of 10 most popular start and end stations
+map %>% 
+  # add markers for most popular start stations
+  addMarkers(
+    ~start_lng, 
+    ~start_lat,
+    icon  = start_icon
+  ) %>% 
+ # add markers for most popular end stations
+  addMarkers(
+    ~end_lng, 
+    ~end_lat,
+    icon = end_icon
+  )
+```
+
+  Figure 5a, above, shows the most popular start stations (green) and end stations (red) between midnight and 5am. Interestingly, the most popular journey between these times is a round trip beginning and ending at 15th St & Constitution Ave NW. Figures 5b and 5c, below, explore this further.
+  
+```{r}
+df5b <- rides_final %>%
+  # get variable for # minutes of the day that have passed since  midnight
+  mutate(mins_start = 60 * hour(started_at) + minute(started_at)) %>%
+  mutate(mins_end = 60 * hour(ended_at) + minute(ended_at)) %>%
+  # select rush times between 12am and 5 am
+  filter(mins_start < 300 & mins_end < 300) %>%
+  # filter out rides longer than one day
+  filter(duration < 24 * 60 * 60) %>%
+  filter(start_station_name == "15th St & Constitution Ave NW" & end_station_name == "15th St & Constitution Ave NW")
+
+ # visualisation: when did these rides occur?
+p5b <- df5b %>% ggplot(mapping = aes(x = started_at)) +
+  scale_x_datetime(date_breaks = "1 month", date_labels = "%b-%y") +
+  # remove padding
+  scale_y_continuous(expand = expansion(mult = c(0, 0))) +
+  labs(
+    title = "Figure 5b: Nightriders b",
+    subtitle = "When did these rides occur?",
+    x = "Month",
+    y = "Number of journeys")
+  
+
+# histogram with 1 bin per month
+p5b + geom_histogram(bins = 30)
+```
+
+  Figure 5b, above, shows that these nighttime round trips were somewhat spread out over the past 18 months. However, it does appear that these round trips were more popular summer 2019 and summer 2020. Perhaps, as the days get longer and the nights get milder, more people find themselves fancying an early morning or late night bike ride. Still though, it doesn't explain why so many of these riders are starting and finishing at 15th St & Constitution Ave NW. Perhaps if we take a look at what times people are taking these journeys we might be able to learn some more.
+  
+```{r}
+# plot time against duration to see the times and durations that people are cycling for here
+p5c <- df5b %>% ggplot(mapping = aes(x = mins_start/60, y = duration / 60)) 
+
+p5c + geom_density_2d_filled() +
+  labs(
+    title = "Figure 5c: Nightriders c",
+    subtitle = "What time did people take these journeys?",
+    x = "Start time (am)",
+    y = "Duration (minutes)") +
+  # remove padding
+  scale_y_continuous(expand = expansion(mult = c(0, 0)), breaks = seq(0, 200, by = 60)) +
+  theme(
+    # neaten up
+    axis.text.x  = element_text(angle = 0),
+     panel.grid.major.y = element_blank()
+    )
+  
+  
+```
+
+  Figure 5c, above, yields some intriguing findings. Most journeys seem to take around an hour, and begin shortly after 12am. Could one person be responsible for most of these journeys, who has a regular errand to run shortly after midnight? Or perhaps there is some kind of a group who like to meet at 15th St & Constitution Ave NW and go for an hour-long bike ride at night time? I find it strange that most journeys are around the hour mark, and it does seem to suggest that whoever is doing these late night journeys is purposefully planning these trips to last around an hour.
+
+# Conclusion 
+
+  In this analysis of Capital Bikeshare rides over the past year and a half, we have found some interesting results. We learned that most users of CaBi bicycles are members, though non-member usage has increased as of late. We learned that many CaBi users use the bicycles to commute to and from work, and that most of these users are also members. It was discovered that, by some margin, the most popular station to commute to was Columbus Circle/Union Station. Finally, we saw that, for some unknown reason, a significant number of night time round trips began and ended at 15th St & Constitution Ave NW. Most of these rides began just after midnight and lasted around an hour.
+  
+  It would be interesting to have access to more user data, so that we could see whether these late night journeys were done by one or a few people, or whether it was just a coincidence that so many rides started and ended at this station at this time. 
