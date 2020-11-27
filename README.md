@@ -5,4 +5,4 @@ I will update regularly throughout the duration of my course, which runs from Oc
 Each folder in this repository represents a module which I completed and contains the coursework I completed for this module
 
 My grades for the courseworks for each module are as follows:
-Introduction to Data Science: **95.75/100**
+-Introduction to Data Science: **95.75/100**
