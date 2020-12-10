@@ -8,3 +8,4 @@ Each folder in this repository represents a module which I completed and contain
 
 My grades for the courseworks for each module are as follows:
 - Introduction to Data Science: **95.75/100**
+- Data Governance and ethics: **74/100**
