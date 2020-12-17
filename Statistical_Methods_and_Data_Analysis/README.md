@@ -6,6 +6,8 @@ You will submit your coursework in the form of a single R notebook (i.e..Rmd fil
 • the rendered .pdf version of your notebook (in case there are any problems knitting your .Rmd during marking).
 The coursework will be marked on the basis of correctness of code, interpretation of outputs and commentary
 as indicated.
+
+
 1. Preamble
 In this section, you will prepare your workspace for undertaking the analyses in this coursework.
 a. Load in any packages you will use to undertake this coursework, including AmesHousing. Use
@@ -17,6 +19,8 @@ indicates if a player played greater than 0 minutes or not. Create a new dataset
 consisting of only those players that played greater than 0 minutes. Create a new dataset called
 “footballngk” consisting of those players in “football” who are not goalkeepers. Drop the unused level
 of “position”. (5 points)
+
+
 2. Linear Regression
 In this problem, you are going to investigate the response variable Lot_Area from the dataset Ames through
 linear regression.
@@ -28,7 +32,6 @@ b. Now remove all cases corresponding to MS_Zoning categories of A_agr (agricult
 variable. (2 points)
 c. Choose an appropriate plot to investigate the relationship between MS_Zoning and Lot_Area in
 Ames2. (2 points)
-1
 d. Choose an appropriate plot to investigate the relationship between Gr_Liv_Area and Lot_Area in
 Ames2. Color points according to the factor MS_Zoning. Ensure your plot has a clear title, axis labels
 and legend. (4 points)
@@ -53,6 +56,8 @@ l. Construct 95% confidence intervals around each parameter estimate for mmod1. 
 us about the importance of the random effect? (2 points)
 m. Write out the full mathematical expression for the model in linmod2 and for the model in mmod1.
 You may round to the nearest integer in all coefficients. (4 points)
+
+
 3. Logistic Regression
 a. Construct a logistic regression model glmod1 for “played” as a function of player age and position. (2
 points)
@@ -63,14 +68,17 @@ bands, and jittered in position to make it possible to see all points. Ensure yo
 main plot title, axes labels and a legend. (6 points)
 c. Split the data using set.seed(123) and rebuild the model on 70% of the data. Cross validate on the
 remaining 30%. Plot the ROCs for both data and comment on your findings. (6 points)
+
+
 4. Multinomial Regression
 a. For the dataset footballngk, create a model multregmod to predict position from goals_per_90_overall,
 assists_per_90_overall, conceded_per_90_overall and cards_per_90_overall. (2 points)
 b. Write out the formulas for this model in terms of P(Forward) and P(Midfielder). You may round
 coefficients to 2 digits. All other factors equal, what position is a player with more assists more likely
 to play? (5 points)
-2
 c. Evaluate the performance of this model using a confusion matrix and by calculating the sum of sensitivities for the model. Comment on your findings. (3 points)
+
+
 5. Poisson/quasipoisson Regression
 a. For the football dataset, first create a variable indicating the total number of all cards a player received
 overall. Then create a model countmod to predict the total number of cards a player received based
