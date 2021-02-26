@@ -8,6 +8,6 @@ Each folder in this repository represents a module which I completed and contain
 
 My grades for the courseworks for each module are as follows:
 - Introduction to Data Science: **95.75/100**
-- Programming for Data Science: **90.8/100**
+- Programming for Data Science: **88/100**
 - Data Governance and ethics: **74/100**
-- Statistical Methods and Data Analyis:
+- Statistical Methods and Data Analyis: **87/100**
