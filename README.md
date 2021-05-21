@@ -11,7 +11,7 @@ My grades for the courseworks for each module are as follows:
 - Programming for Data Science: **88/100**
 - Data Governance and ethics: **74/100**
 - Statistical Methods and Data Analyis: **87/100**
-- Research Methods **88%**
-- Data Mining **86%**
+- Research Methods **88/100**
+- Data Mining **86/100**
 - Applied Machine Learning 
 - Artificial Intelligence and Big Data
