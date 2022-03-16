@@ -3,8 +3,10 @@ This repository contains my dissertation project report (`FINAL.pdf`), as well a
 
 
    **ABSTRACT**
+   
+<p style="text-align: center;">**ABSTRACT**</p>
 
-Human activity recognition (HAR) – the process of using machine learning 
+ Human activity recognition (HAR) – the process of using machine learning 
 algorithms to build models which classify human movement data into a set of predefined 
 activity categories – has become a field of intense study in recent years. Over the last decade, 
 many researchers have reported achieving state-of-the-art performance by employing deep 
