@@ -1,10 +1,5 @@
 
-This repository contains my dissertation project report (`FINAL.pdf`), as well as the four jupyter notebooks containing the code I wrote for this project.
-
-<div class="myWrapper" markdown="1">
-# my markdown content
-this content is wrapped into a div with class "myWrapper"
-</div>
+This repository contains my dissertation project report (`FINAL.pdf`), as well as the four jupyter notebooks containing the code I wrote for this project. Below is the abstract I wrote for the project report.
 
 **ABSTRACT**
 
