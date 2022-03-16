@@ -2,7 +2,7 @@
 This repository contains my dissertation project report (`FINAL.pdf`), as well as the four jupyter notebooks containing the code I wrote for this project.
 
 
-**ABSTRACT**
+   **ABSTRACT**
 
 Human activity recognition (HAR) – the process of using machine learning 
 algorithms to build models which classify human movement data into a set of predefined 
