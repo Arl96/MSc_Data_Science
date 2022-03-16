@@ -15,3 +15,5 @@ My grades for the courseworks for each module are as follows:
 - Data Mining **86/100**
 - Applied Machine Learning **78/100**
 - Artificial Intelligence and Big Data **75/100**
+
+DIssertation project: **Distinction**
