@@ -1,10 +1,12 @@
 
 This repository contains my dissertation project report (`FINAL.pdf`), as well as the four jupyter notebooks containing the code I wrote for this project.
 
+<div class="myWrapper" markdown="1">
+# my markdown content
+this content is wrapped into a div with class "myWrapper"
+</div>
 
-   **ABSTRACT**
-   
-<p style="text-align: center;">**ABSTRACT**</p>
+**ABSTRACT**
 
  Human activity recognition (HAR) – the process of using machine learning 
 algorithms to build models which classify human movement data into a set of predefined 
