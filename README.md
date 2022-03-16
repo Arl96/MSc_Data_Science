@@ -13,5 +13,5 @@ My grades for the courseworks for each module are as follows:
 - Statistical Methods and Data Analyis: **87/100**
 - Research Methods **88/100**
 - Data Mining **86/100**
-- Applied Machine Learning 
-- Artificial Intelligence and Big Data
+- Applied Machine Learning **78/100**
+- Artificial Intelligence and Big Data **75/100**
